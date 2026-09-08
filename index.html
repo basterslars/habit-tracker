@@ -1,0 +1,1279 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habit Tracker</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-raised: #ffffff;
+    --text: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --border: #e1e0d9;
+    --border-strong: #c3c2b7;
+    --ring: rgba(11,11,11,0.10);
+    --accent: #2a78d6;
+    --accent-strong: #256abf;
+    --good: #0ca30c;
+    --good-bg: #e5f6e5;
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 6px 20px rgba(11,11,11,0.06);
+
+    --slot-1: #2a78d6; /* blue */
+    --slot-2: #eb6834; /* orange */
+    --slot-3: #1baf7a; /* aqua */
+    --slot-4: #eda100; /* yellow */
+    --slot-5: #e87ba4; /* magenta */
+    --slot-6: #008300; /* green */
+    --slot-7: #4a3aa7; /* violet */
+    --slot-8: #e34948; /* red */
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-raised: #202020;
+      --text: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --border: #2c2c2a;
+      --border-strong: #383835;
+      --ring: rgba(255,255,255,0.10);
+      --accent: #3987e5;
+      --accent-strong: #3987e5;
+      --good: #0ca30c;
+      --good-bg: rgba(12,163,12,0.16);
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px rgba(0,0,0,0.4);
+
+      --slot-1: #3987e5;
+      --slot-2: #d95926;
+      --slot-3: #199e70;
+      --slot-4: #c98500;
+      --slot-5: #d55181;
+      --slot-6: #008300;
+      --slot-7: #9085e9;
+      --slot-8: #e66767;
+    }
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-raised: #202020;
+    --text: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --border: #2c2c2a;
+    --border-strong: #383835;
+    --ring: rgba(255,255,255,0.10);
+    --accent: #3987e5;
+    --accent-strong: #3987e5;
+    --good: #0ca30c;
+    --good-bg: rgba(12,163,12,0.16);
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 6px 24px rgba(0,0,0,0.4);
+
+    --slot-1: #3987e5;
+    --slot-2: #d95926;
+    --slot-3: #199e70;
+    --slot-4: #c98500;
+    --slot-5: #d55181;
+    --slot-6: #008300;
+    --slot-7: #9085e9;
+    --slot-8: #e66767;
+  }
+
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: linear-gradient(155deg, var(--accent) 0%, var(--slot-7) 100%);
+    border-radius: 20px;
+    padding: 24px 24px 22px;
+    color: #ffffff;
+    box-shadow: var(--shadow);
+  }
+  .hero-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .hero-top h1 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .icon-btn {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.28);
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s ease;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.3); }
+
+  .hero-date { margin-top: 14px; }
+  .hero-date-weekday {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: capitalize;
+  }
+  .hero-date-full {
+    font-size: 0.92rem;
+    opacity: 0.9;
+    margin-top: 2px;
+  }
+
+  .hero-progress {
+    margin-top: 18px;
+    background: rgba(255,255,255,0.16);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .hero-progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.88rem;
+    margin-bottom: 8px;
+  }
+  .hero-progress-row strong { font-size: 1rem; }
+  .hero-progress-track {
+    height: 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.25);
+    overflow: hidden;
+  }
+  .hero-progress-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: #ffffff;
+    transition: width .3s ease;
+  }
+
+  /* ---------- Cards ---------- */
+  .card {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .card-header h2 { margin: 0; }
+
+  /* ---------- Add habit ---------- */
+  #addHabitForm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  #habitNameInput {
+    flex: 1 1 200px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  #habitNameInput:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .color-picker {
+    display: flex;
+    gap: 6px;
+  }
+  .swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.75rem;
+  }
+  .swatch[aria-pressed="true"] {
+    border-color: var(--text);
+    transform: scale(1.08);
+  }
+  .add-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .add-btn:hover { background: var(--accent-strong); }
+
+  /* ---------- Today list ---------- */
+  .today-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .habit-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    transition: background .15s ease;
+  }
+  .habit-row:hover { background: var(--surface); }
+  .check-btn {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    border: 2px solid var(--border-strong);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    transition: background .15s ease, border-color .15s ease, transform .1s ease;
+  }
+  .check-btn:active { transform: scale(0.92); }
+  .check-btn[aria-pressed="true"] {
+    background: var(--check-color, var(--good));
+    border-color: var(--check-color, var(--good));
+  }
+  .dot {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--dot-color, var(--accent));
+  }
+  .habit-name {
+    flex: 1 1 auto;
+    font-size: 0.95rem;
+    font-weight: 600;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .streak-badge {
+    flex: 0 0 auto;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .delete-btn {
+    flex: 0 0 auto;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 6px 8px;
+    border-radius: 8px;
+    transition: background .15s ease, color .15s ease;
+  }
+  .delete-btn:hover { background: color-mix(in srgb, #e34948 14%, transparent); color: #e34948; }
+  .delete-btn.confirming {
+    background: #e34948;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.72rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 18px 8px;
+    margin: 0;
+  }
+
+  /* ---------- Week table ---------- */
+  .week-scroll { overflow-x: auto; }
+  #weekTable {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 480px;
+  }
+  #weekTable th, #weekTable td {
+    text-align: center;
+    padding: 6px 4px;
+  }
+  #weekTable th {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  #weekTable th.today-col { color: var(--accent); }
+  #weekTable td.habit-label {
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding-right: 10px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .week-cell-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .week-cell-btn[aria-pressed="true"] {
+    background: var(--check-color, var(--accent));
+    border-color: var(--check-color, var(--accent));
+  }
+  .week-cell-btn[disabled] {
+    cursor: default;
+    opacity: 0.35;
+    background: repeating-linear-gradient(45deg, var(--border), var(--border) 2px, transparent 2px, transparent 5px);
+  }
+  .week-cell-btn.is-today-col { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+
+  /* ---------- Year heatmaps ---------- */
+  .habits-year-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .year-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .year-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .year-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .year-nav button {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .year-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 10px 0 14px;
+  }
+  .year-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .year-stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .year-stat-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .heatmap-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .heatmap-inner { display: inline-flex; flex-direction: column; gap: 4px; }
+  .heatmap-months {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 12px;
+    gap: 3px;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-left: 20px;
+  }
+  .heatmap-body { display: flex; gap: 3px; }
+  .heatmap-daylabels {
+    display: grid;
+    grid-template-rows: repeat(7, 12px);
+    gap: 3px;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    width: 16px;
+    text-align: right;
+    line-height: 12px;
+  }
+  .heatmap-grid {
+    display: grid;
+    grid-template-rows: repeat(7, 12px);
+    grid-auto-flow: column;
+    grid-auto-columns: 12px;
+    gap: 3px;
+  }
+  .heat-cell {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: none;
+    padding: 0;
+    background: var(--border);
+    cursor: pointer;
+  }
+  .heat-cell:hover { outline: 2px solid var(--text-muted); outline-offset: 1px; }
+  .heat-cell[data-checked="1"] { background: var(--heat-color, var(--accent)); }
+  .heat-cell[data-future="1"] {
+    cursor: default;
+    background: transparent;
+    border: 1px dashed var(--border);
+  }
+  .heat-cell[data-empty="1"] { background: transparent; cursor: default; }
+
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+  .legend-swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    background: var(--border);
+  }
+  .legend-swatch.on { background: var(--heat-color, var(--accent)); }
+
+  .empty-app-state {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 30px 10px;
+  }
+
+  /* ---------- Loading / sync errors ---------- */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--page);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+  }
+  .loading-spinner {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sync-error {
+    background: #fdecea;
+    border: 1px solid #e34948;
+    color: #7a1f1f;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      .sync-error { background: rgba(227,73,72,0.14); color: #ffb3b2; border-color: #e66767; }
+    }
+  }
+  [data-theme="dark"] .sync-error { background: rgba(227,73,72,0.14); color: #ffb3b2; border-color: #e66767; }
+  .sync-error a { color: inherit; }
+
+  @media (max-width: 480px) {
+    .hero-top h1 { font-size: 1.15rem; }
+    .hero-date-weekday { font-size: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner" aria-label="Bezig met laden"></div></div>
+<div class="app" id="app" hidden>
+
+  <header class="hero">
+    <div class="hero-top">
+      <h1>Habit Tracker</h1>
+      <button id="themeToggle" class="icon-btn" aria-label="Wissel licht/donker thema" title="Wissel thema">🌓</button>
+    </div>
+    <div class="hero-date">
+      <div class="hero-date-weekday" id="todayWeekday">&nbsp;</div>
+      <div class="hero-date-full" id="todayFull">&nbsp;</div>
+    </div>
+    <div class="hero-progress">
+      <div class="hero-progress-row">
+        <span>Vandaag afgevinkt</span>
+        <strong id="heroProgressText">0 / 0</strong>
+      </div>
+      <div class="hero-progress-track">
+        <div class="hero-progress-fill" id="heroProgressFill" style="width:0%"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="sync-error" id="syncError" hidden></div>
+
+  <section class="card">
+    <h2>Nieuwe gewoonte</h2>
+    <form id="addHabitForm" autocomplete="off">
+      <input id="habitNameInput" type="text" placeholder="bv. 10.000 stappen zetten" maxlength="40" required />
+      <div class="color-picker" id="colorPicker"></div>
+      <button type="submit" class="add-btn">Toevoegen</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="card-header"><h2>Vandaag</h2></div>
+    <ul class="today-list" id="todayList"></ul>
+    <p class="empty-state" id="emptyState" hidden>Nog geen gewoontes toegevoegd. Voeg er hierboven één toe om te beginnen.</p>
+  </section>
+
+  <section class="card" id="weekCard" hidden>
+    <h2>Deze week</h2>
+    <div class="week-scroll">
+      <table id="weekTable"></table>
+    </div>
+  </section>
+
+  <section class="habits-year-section" id="yearSection"></section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_THEME = "theme_v1";
+
+  function fatalError(message) {
+    var overlay = document.getElementById("loadingOverlay");
+    if (overlay) overlay.hidden = true;
+    var app = document.getElementById("app");
+    if (app) app.hidden = false;
+    var box = document.getElementById("syncError");
+    if (box) { box.textContent = message; box.hidden = false; }
+  }
+
+  if (!window.supabase || typeof window.supabase.createClient !== "function") {
+    fatalError("Kon de Supabase-bibliotheek niet laden (cdn.jsdelivr.net is niet bereikbaar). Controleer je internetverbinding en herlaad de pagina.");
+    return;
+  }
+  if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+    fatalError("supabase-config.js ontbreekt of is onvolledig geladen. Herlaad de pagina.");
+    return;
+  }
+
+  var supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+  function withTimeout(promise, ms, message) {
+    return Promise.race([
+      promise,
+      new Promise(function (_, reject) { setTimeout(function () { reject(new Error(message)); }, ms); })
+    ]);
+  }
+
+  var COLORS = [
+    { key: "slot-1", var: "--slot-1" },
+    { key: "slot-2", var: "--slot-2" },
+    { key: "slot-3", var: "--slot-3" },
+    { key: "slot-4", var: "--slot-4" },
+    { key: "slot-5", var: "--slot-5" },
+    { key: "slot-6", var: "--slot-6" },
+    { key: "slot-7", var: "--slot-7" },
+    { key: "slot-8", var: "--slot-8" }
+  ];
+
+  var WEEKDAYS_LONG = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
+  var WEEKDAYS_SHORT = ["zo", "ma", "di", "wo", "do", "vr", "za"];
+  var MONTHS_LONG = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
+  var MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+  var DAYLABELS_MON_FIRST = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+
+  // ---------- date helpers (local time, no UTC drift) ----------
+  function toISO(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+  function todayISO() { return toISO(new Date()); }
+  function startOfDay(d) { var n = new Date(d); n.setHours(0, 0, 0, 0); return n; }
+  function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+  function mondayOf(d) {
+    var dow = (d.getDay() + 6) % 7; // Mon=0..Sun=6
+    return addDays(d, -dow);
+  }
+  // ---------- Supabase-backed data ----------
+  var habits = []; // [{ id, name, color, createdAt }]
+  var checks = {}; // { habitId: { "YYYY-MM-DD": true } }
+  var yearOffsets = {}; // habitId -> offset from current year (for prev/next nav)
+  var pendingToggles = {}; // "habitId|iso" -> true while a request is in flight
+
+  function showSyncError(message) {
+    var box = document.getElementById("syncError");
+    box.textContent = message;
+    box.hidden = false;
+  }
+  function clearSyncError() {
+    document.getElementById("syncError").hidden = true;
+  }
+
+  async function ensureSession() {
+    var got = await supabaseClient.auth.getSession();
+    if (got.data.session) return got.data.session;
+    var signIn = await supabaseClient.auth.signInAnonymously();
+    if (signIn.error) throw signIn.error;
+    return signIn.data.session;
+  }
+
+  async function fetchHabitsAndChecks() {
+    var habitsRes = await supabaseClient
+      .from("habits")
+      .select("id,name,color,created_at")
+      .order("created_at", { ascending: true });
+    if (habitsRes.error) throw habitsRes.error;
+    habits = habitsRes.data.map(function (r) {
+      return { id: r.id, name: r.name, color: r.color, createdAt: r.created_at };
+    });
+
+    var checksRes = await supabaseClient.from("habit_checks").select("habit_id,check_date");
+    if (checksRes.error) throw checksRes.error;
+    var map = {};
+    checksRes.data.forEach(function (r) {
+      if (!map[r.habit_id]) map[r.habit_id] = {};
+      map[r.habit_id][r.check_date] = true;
+    });
+    checks = map;
+  }
+
+  function isChecked(habitId, iso) {
+    return !!(checks[habitId] && checks[habitId][iso]);
+  }
+
+  async function toggleChecked(habitId, iso) {
+    var future = iso > todayISO();
+    if (future) return;
+    var key = habitId + "|" + iso;
+    if (pendingToggles[key]) return;
+    pendingToggles[key] = true;
+    try {
+      var wasChecked = isChecked(habitId, iso);
+      if (wasChecked) {
+        var del = await supabaseClient.from("habit_checks").delete().eq("habit_id", habitId).eq("check_date", iso);
+        if (del.error) throw del.error;
+        if (checks[habitId]) delete checks[habitId][iso];
+      } else {
+        var ins = await supabaseClient.from("habit_checks").insert({ habit_id: habitId, check_date: iso });
+        if (ins.error) throw ins.error;
+        if (!checks[habitId]) checks[habitId] = {};
+        checks[habitId][iso] = true;
+      }
+      clearSyncError();
+      renderAll();
+    } catch (e) {
+      showSyncError("Kon de gewoonte niet bijwerken: " + e.message);
+    } finally {
+      delete pendingToggles[key];
+    }
+  }
+
+  function colorVar(habit) {
+    var found = COLORS.filter(function (c) { return c.key === habit.color; })[0];
+    return "var(" + (found ? found.var : "--slot-1") + ")";
+  }
+
+  // ---------- streaks & stats ----------
+  function currentStreak(habitId) {
+    var count = 0;
+    var d = startOfDay(new Date());
+    if (!isChecked(habitId, toISO(d))) d = addDays(d, -1);
+    while (isChecked(habitId, toISO(d))) {
+      count++;
+      d = addDays(d, -1);
+    }
+    return count;
+  }
+
+  function yearStats(habitId, year) {
+    var map = checks[habitId] || {};
+    var count = 0;
+    for (var iso in map) {
+      if (map[iso] && iso.slice(0, 4) === String(year)) count++;
+    }
+    var now = new Date();
+    var isCurrentYear = now.getFullYear() === year;
+    var totalDays;
+    if (isCurrentYear) {
+      var start = new Date(year, 0, 1);
+      totalDays = Math.floor((startOfDay(now) - start) / 86400000) + 1;
+    } else if (year < now.getFullYear()) {
+      totalDays = (new Date(year, 11, 31) - new Date(year, 0, 1)) / 86400000 + 1;
+    } else {
+      totalDays = 0;
+    }
+    var pct = totalDays > 0 ? Math.round((count / totalDays) * 100) : 0;
+    return { count: count, totalDays: totalDays, pct: pct };
+  }
+
+  function longestStreak(habitId) {
+    var map = checks[habitId] || {};
+    var dates = Object.keys(map).filter(function (k) { return map[k]; }).sort();
+    if (!dates.length) return 0;
+    var best = 1, run = 1;
+    for (var i = 1; i < dates.length; i++) {
+      var prev = new Date(dates[i - 1]);
+      var cur = new Date(dates[i]);
+      var diff = Math.round((cur - prev) / 86400000);
+      if (diff === 1) { run++; } else { run = 1; }
+      if (run > best) best = run;
+    }
+    return best;
+  }
+
+  // ---------- rendering ----------
+  function renderHeroDate() {
+    var now = new Date();
+    document.getElementById("todayWeekday").textContent = WEEKDAYS_LONG[now.getDay()];
+    var full = document.getElementById("todayFull");
+    full.textContent = now.getDate() + " " + MONTHS_LONG[now.getMonth()] + " " + now.getFullYear();
+    full.dataset.iso = todayISO();
+  }
+
+  function renderHeroProgress() {
+    var iso = todayISO();
+    var total = habits.length;
+    var done = habits.filter(function (h) { return isChecked(h.id, iso); }).length;
+    document.getElementById("heroProgressText").textContent = done + " / " + total;
+    var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    document.getElementById("heroProgressFill").style.width = pct + "%";
+  }
+
+  function renderColorPicker() {
+    var wrap = document.getElementById("colorPicker");
+    wrap.innerHTML = "";
+    COLORS.forEach(function (c, idx) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "swatch";
+      btn.style.background = "var(" + c.var + ")";
+      btn.dataset.color = c.key;
+      btn.setAttribute("aria-pressed", idx === 0 ? "true" : "false");
+      btn.title = "Kies deze kleur";
+      btn.addEventListener("click", function () {
+        wrap.querySelectorAll(".swatch").forEach(function (s) { s.setAttribute("aria-pressed", "false"); });
+        btn.setAttribute("aria-pressed", "true");
+      });
+      wrap.appendChild(btn);
+    });
+  }
+  function selectedColorKey() {
+    var el = document.querySelector("#colorPicker .swatch[aria-pressed='true']");
+    return el ? el.dataset.color : COLORS[0].key;
+  }
+
+  function renderTodayList() {
+    var list = document.getElementById("todayList");
+    var empty = document.getElementById("emptyState");
+    list.innerHTML = "";
+    if (!habits.length) {
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+    var iso = todayISO();
+    habits.forEach(function (h) {
+      var li = document.createElement("li");
+      li.className = "habit-row";
+
+      var checkBtn = document.createElement("button");
+      checkBtn.type = "button";
+      checkBtn.className = "check-btn";
+      checkBtn.style.setProperty("--check-color", colorVar(h));
+      var checked = isChecked(h.id, iso);
+      checkBtn.setAttribute("aria-pressed", checked ? "true" : "false");
+      checkBtn.setAttribute("aria-label", (checked ? "Zet af als niet gedaan: " : "Vink af als gedaan: ") + h.name);
+      checkBtn.textContent = checked ? "✓" : "";
+      checkBtn.addEventListener("click", function () { toggleChecked(h.id, iso); });
+
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.setProperty("--dot-color", colorVar(h));
+
+      var name = document.createElement("span");
+      name.className = "habit-name";
+      name.textContent = h.name;
+
+      var streak = document.createElement("span");
+      streak.className = "streak-badge";
+      var s = currentStreak(h.id);
+      streak.textContent = s > 0 ? "🔥 " + s : "";
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "delete-btn";
+      delBtn.textContent = "✕";
+      delBtn.title = "Verwijder gewoonte";
+      delBtn.addEventListener("click", function () {
+        if (delBtn.classList.contains("confirming")) {
+          delBtn.disabled = true;
+          deleteHabit(h.id);
+        } else {
+          delBtn.classList.add("confirming");
+          delBtn.textContent = "Zeker?";
+          setTimeout(function () {
+            delBtn.classList.remove("confirming");
+            delBtn.textContent = "✕";
+          }, 3000);
+        }
+      });
+
+      li.appendChild(checkBtn);
+      li.appendChild(dot);
+      li.appendChild(name);
+      li.appendChild(streak);
+      li.appendChild(delBtn);
+      list.appendChild(li);
+    });
+  }
+
+  function renderWeekTable() {
+    var card = document.getElementById("weekCard");
+    var table = document.getElementById("weekTable");
+    table.innerHTML = "";
+    if (!habits.length) { card.hidden = true; return; }
+    card.hidden = false;
+
+    var monday = mondayOf(startOfDay(new Date()));
+    var days = [];
+    for (var i = 0; i < 7; i++) days.push(addDays(monday, i));
+    var todayIso = todayISO();
+
+    var thead = document.createElement("thead");
+    var headRow = document.createElement("tr");
+    var corner = document.createElement("th");
+    corner.textContent = "";
+    headRow.appendChild(corner);
+    days.forEach(function (d) {
+      var th = document.createElement("th");
+      var iso = toISO(d);
+      if (iso === todayIso) th.className = "today-col";
+      th.innerHTML = DAYLABELS_MON_FIRST[(d.getDay() + 6) % 7] + "<br>" + d.getDate();
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    var tbody = document.createElement("tbody");
+    habits.forEach(function (h) {
+      var tr = document.createElement("tr");
+      var labelTd = document.createElement("td");
+      labelTd.className = "habit-label";
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.setProperty("--dot-color", colorVar(h));
+      labelTd.appendChild(dot);
+      var nameSpan = document.createElement("span");
+      nameSpan.textContent = h.name;
+      nameSpan.style.overflow = "hidden";
+      nameSpan.style.textOverflow = "ellipsis";
+      nameSpan.style.whiteSpace = "nowrap";
+      labelTd.appendChild(nameSpan);
+      tr.appendChild(labelTd);
+
+      days.forEach(function (d) {
+        var iso = toISO(d);
+        var td = document.createElement("td");
+        var btn = document.createElement("button");
+        btn.className = "week-cell-btn";
+        btn.style.setProperty("--check-color", colorVar(h));
+        if (iso === todayIso) btn.classList.add("is-today-col");
+        var future = iso > todayIso;
+        var checked = isChecked(h.id, iso);
+        btn.setAttribute("aria-pressed", checked ? "true" : "false");
+        btn.textContent = checked ? "✓" : "";
+        if (future) {
+          btn.disabled = true;
+          btn.title = "Nog niet zover";
+        } else {
+          btn.title = h.name + " — " + iso;
+          btn.addEventListener("click", function () { toggleChecked(h.id, iso); });
+        }
+        td.appendChild(btn);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+  }
+
+  function buildYearColumns(year) {
+    var jan1 = new Date(year, 0, 1);
+    var dec31 = new Date(year, 11, 31);
+    var firstMonday = mondayOf(jan1);
+    var lastSunday = addDays(mondayOf(dec31), 6);
+    var days = [];
+    for (var d = new Date(firstMonday); d <= lastSunday; d = addDays(d, 1)) days.push(new Date(d));
+    var columns = [];
+    for (var i = 0; i < days.length; i += 7) columns.push(days.slice(i, i + 7));
+    return columns;
+  }
+
+  function renderYearSection() {
+    var section = document.getElementById("yearSection");
+    section.innerHTML = "";
+    if (!habits.length) return;
+
+    var todayIso = todayISO();
+    var thisYear = new Date().getFullYear();
+
+    habits.forEach(function (h) {
+      var offset = yearOffsets[h.id] || 0;
+      var year = thisYear + offset;
+
+      var card = document.createElement("div");
+      card.className = "card";
+
+      var head = document.createElement("div");
+      head.className = "year-card-head";
+      var title = document.createElement("div");
+      title.className = "year-card-title";
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.setProperty("--dot-color", colorVar(h));
+      var titleText = document.createElement("span");
+      titleText.textContent = h.name;
+      title.appendChild(dot);
+      title.appendChild(titleText);
+
+      var nav = document.createElement("div");
+      nav.className = "year-nav";
+      var prevBtn = document.createElement("button");
+      prevBtn.type = "button";
+      prevBtn.textContent = "‹";
+      prevBtn.title = "Vorig jaar";
+      prevBtn.addEventListener("click", function () {
+        yearOffsets[h.id] = (yearOffsets[h.id] || 0) - 1;
+        renderYearSection();
+      });
+      var yearLabel = document.createElement("span");
+      yearLabel.textContent = String(year);
+      var nextBtn = document.createElement("button");
+      nextBtn.type = "button";
+      nextBtn.textContent = "›";
+      nextBtn.title = "Volgend jaar";
+      nextBtn.disabled = year >= thisYear;
+      nextBtn.addEventListener("click", function () {
+        yearOffsets[h.id] = (yearOffsets[h.id] || 0) + 1;
+        renderYearSection();
+      });
+      nav.appendChild(prevBtn);
+      nav.appendChild(yearLabel);
+      nav.appendChild(nextBtn);
+
+      head.appendChild(title);
+      head.appendChild(nav);
+      card.appendChild(head);
+
+      var stats = yearStats(h.id, year);
+      var statsWrap = document.createElement("div");
+      statsWrap.className = "year-stats";
+
+      function stat(value, label) {
+        var d = document.createElement("div");
+        d.className = "year-stat";
+        var v = document.createElement("div");
+        v.className = "year-stat-value";
+        v.textContent = value;
+        var l = document.createElement("div");
+        l.className = "year-stat-label";
+        l.textContent = label;
+        d.appendChild(v);
+        d.appendChild(l);
+        return d;
+      }
+      statsWrap.appendChild(stat(stats.count + " dagen", "Afgevinkt in " + year));
+      statsWrap.appendChild(stat(stats.pct + "%", "Van het jaar"));
+      if (year === thisYear) {
+        statsWrap.appendChild(stat(String(currentStreak(h.id)), "Huidige streak"));
+      }
+      statsWrap.appendChild(stat(String(longestStreak(h.id)), "Langste streak"));
+      card.appendChild(statsWrap);
+
+      // heatmap
+      var scroll = document.createElement("div");
+      scroll.className = "heatmap-scroll";
+      var inner = document.createElement("div");
+      inner.className = "heatmap-inner";
+
+      var columns = buildYearColumns(year);
+
+      var monthsRow = document.createElement("div");
+      monthsRow.className = "heatmap-months";
+      monthsRow.style.gridTemplateColumns = "repeat(" + columns.length + ", 12px)";
+      var lastMonthPrinted = -1;
+      columns.forEach(function (col) {
+        var label = document.createElement("span");
+        var monthStartCell = col.filter(function (d) { return d.getFullYear() === year && d.getDate() === 1; })[0];
+        if (monthStartCell && monthStartCell.getMonth() !== lastMonthPrinted) {
+          label.textContent = MONTHS_SHORT[monthStartCell.getMonth()];
+          lastMonthPrinted = monthStartCell.getMonth();
+        }
+        monthsRow.appendChild(label);
+      });
+
+      var body = document.createElement("div");
+      body.className = "heatmap-body";
+
+      var dayLabels = document.createElement("div");
+      dayLabels.className = "heatmap-daylabels";
+      DAYLABELS_MON_FIRST.forEach(function (lbl, idx) {
+        var s = document.createElement("span");
+        s.textContent = (idx % 2 === 1) ? lbl : "";
+        dayLabels.appendChild(s);
+      });
+
+      var grid = document.createElement("div");
+      grid.className = "heatmap-grid";
+      grid.style.gridTemplateColumns = "repeat(" + columns.length + ", 12px)";
+
+      columns.forEach(function (col) {
+        col.forEach(function (d) {
+          var iso = toISO(d);
+          var inYear = d.getFullYear() === year;
+          var cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "heat-cell";
+          cell.style.setProperty("--heat-color", colorVar(h));
+
+          if (!inYear) {
+            cell.dataset.empty = "1";
+            cell.disabled = true;
+            cell.tabIndex = -1;
+          } else if (iso > todayIso) {
+            cell.dataset.future = "1";
+            cell.disabled = true;
+            cell.title = d.getDate() + " " + MONTHS_LONG[d.getMonth()] + " " + year;
+          } else {
+            var checked = isChecked(h.id, iso);
+            cell.dataset.checked = checked ? "1" : "0";
+            cell.title = d.getDate() + " " + MONTHS_LONG[d.getMonth()] + " " + year + (checked ? " — afgevinkt" : " — niet afgevinkt");
+            cell.addEventListener("click", function () { toggleChecked(h.id, iso); });
+          }
+          grid.appendChild(cell);
+        });
+      });
+
+      body.appendChild(dayLabels);
+      body.appendChild(grid);
+      inner.appendChild(monthsRow);
+      inner.appendChild(body);
+      scroll.appendChild(inner);
+      card.appendChild(scroll);
+
+      var legend = document.createElement("div");
+      legend.className = "heatmap-legend";
+      var sw1 = document.createElement("span");
+      sw1.className = "legend-swatch";
+      var sw2 = document.createElement("span");
+      sw2.className = "legend-swatch on";
+      sw2.style.setProperty("--heat-color", colorVar(h));
+      legend.appendChild(document.createTextNode("Niet gedaan"));
+      legend.appendChild(sw1);
+      legend.appendChild(sw2);
+      legend.appendChild(document.createTextNode("Gedaan"));
+      card.appendChild(legend);
+
+      section.appendChild(card);
+    });
+  }
+
+  async function deleteHabit(id) {
+    try {
+      var res = await supabaseClient.from("habits").delete().eq("id", id);
+      if (res.error) throw res.error;
+      habits = habits.filter(function (h) { return h.id !== id; });
+      delete checks[id];
+      delete yearOffsets[id];
+      clearSyncError();
+      renderAll();
+    } catch (e) {
+      showSyncError("Kon de gewoonte niet verwijderen: " + e.message);
+      renderAll();
+    }
+  }
+
+  async function addHabit(name, colorKey) {
+    var form = document.getElementById("addHabitForm");
+    var submitBtn = form.querySelector(".add-btn");
+    submitBtn.disabled = true;
+    try {
+      var res = await supabaseClient.from("habits").insert({ name: name, color: colorKey }).select().single();
+      if (res.error) throw res.error;
+      habits.push({ id: res.data.id, name: res.data.name, color: res.data.color, createdAt: res.data.created_at });
+      clearSyncError();
+      renderAll();
+    } catch (e) {
+      showSyncError("Kon de gewoonte niet opslaan: " + e.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  function renderAll() {
+    renderHeroDate();
+    renderHeroProgress();
+    renderTodayList();
+    renderWeekTable();
+    renderYearSection();
+  }
+
+  // ---------- form ----------
+  document.getElementById("addHabitForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("habitNameInput");
+    var name = input.value.trim();
+    if (!name) return;
+    addHabit(name, selectedColorKey());
+    input.value = "";
+    input.focus();
+  });
+
+  // ---------- theme toggle ----------
+  function applyTheme(theme) {
+    if (theme === "light" || theme === "dark") {
+      document.documentElement.setAttribute("data-theme", theme);
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }
+  var savedTheme = localStorage.getItem(STORAGE_THEME) || "auto";
+  applyTheme(savedTheme);
+  document.getElementById("themeToggle").addEventListener("click", function () {
+    var current = localStorage.getItem(STORAGE_THEME) || "auto";
+    var order = { auto: "light", light: "dark", dark: "auto" };
+    var next = order[current];
+    localStorage.setItem(STORAGE_THEME, next);
+    applyTheme(next);
+  });
+
+  renderColorPicker();
+
+  // ---------- bootstrap ----------
+  async function boot() {
+    try {
+      await withTimeout(ensureSession(), 15000, "geen reactie van Supabase binnen 15 seconden");
+      await withTimeout(fetchHabitsAndChecks(), 15000, "geen reactie van Supabase binnen 15 seconden");
+      renderAll();
+      document.getElementById("loadingOverlay").hidden = true;
+      document.getElementById("app").hidden = false;
+    } catch (e) {
+      document.getElementById("loadingOverlay").hidden = true;
+      document.getElementById("app").hidden = false;
+      showSyncError(
+        "Kon niet verbinden met de database: " + e.message +
+        ". Controleer of 'Anonymous sign-ins' aanstaat bij Authentication > Sign In / Providers in je Supabase-project, en laad de pagina opnieuw."
+      );
+    }
+  }
+  boot();
+
+  // keep "today" fresh if the tab stays open across midnight
+  setInterval(function () {
+    if (document.getElementById("todayFull").dataset.iso !== todayISO()) {
+      renderAll();
+    }
+  }, 60000);
+})();
+</script>
+</body>
+</html>
