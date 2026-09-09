@@ -345,6 +345,55 @@
     margin: 0;
   }
 
+  /* ---------- To-do list ---------- */
+  .todo-add-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .todo-add-form input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .todo-add-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .todo-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .todo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: 12px;
+    transition: background .15s ease;
+  }
+  .todo-row:hover { background: var(--surface); }
+  .todo-text {
+    flex: 1 1 auto;
+    font-size: 0.95rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .todo-text.completed {
+    color: var(--text-muted);
+    text-decoration: line-through;
+  }
+
   /* ---------- Week table ---------- */
   .week-scroll { overflow-x: auto; }
   #weekTable {
@@ -616,6 +665,16 @@
     <p class="empty-state" id="emptyState" hidden>Nog geen gewoontes toegevoegd. Voeg er hierboven één toe om te beginnen.</p>
   </section>
 
+  <section class="card">
+    <div class="card-header"><h2>To-do's vandaag</h2></div>
+    <form id="addTodoForm" autocomplete="off" class="todo-add-form">
+      <input id="todoTextInput" type="text" placeholder="bv. Boodschappen doen" maxlength="80" required />
+      <button type="submit" class="add-btn">Toevoegen</button>
+    </form>
+    <ul class="todo-list" id="todoList"></ul>
+    <p class="empty-state" id="todoEmptyState" hidden>Nog geen taken. Voeg er hierboven één toe.</p>
+  </section>
+
   <section class="card" id="weekCard" hidden>
     <h2>Deze week</h2>
     <div class="week-scroll">
@@ -696,6 +755,7 @@
   // ---------- Supabase-backed data ----------
   var habits = []; // [{ id, name, color, createdAt }]
   var checks = {}; // { habitId: { "YYYY-MM-DD": true } }
+  var todos = []; // [{ id, text, completed, completedOn }]
   var yearOffsets = {}; // habitId -> offset from current year (for prev/next nav)
   var pendingToggles = {}; // "habitId|iso" -> true while a request is in flight
 
@@ -734,6 +794,73 @@
       map[r.habit_id][r.check_date] = true;
     });
     checks = map;
+  }
+
+  async function fetchTodos() {
+    var res = await supabaseClient
+      .from("todos")
+      .select("id,text,completed,completed_on")
+      .order("created_at", { ascending: true });
+    if (res.error) throw res.error;
+    todos = res.data.map(function (r) {
+      return { id: r.id, text: r.text, completed: r.completed, completedOn: r.completed_on };
+    });
+    await purgeStaleTodos();
+  }
+
+  async function purgeStaleTodos() {
+    var stale = todos.filter(function (t) { return t.completed && t.completedOn && t.completedOn < todayISO(); });
+    if (!stale.length) return;
+    var del = await supabaseClient.from("todos").delete().in("id", stale.map(function (t) { return t.id; }));
+    if (del.error) throw del.error;
+    var staleIds = stale.reduce(function (set, t) { set[t.id] = true; return set; }, {});
+    todos = todos.filter(function (t) { return !staleIds[t.id]; });
+  }
+
+  async function addTodo(text) {
+    var form = document.getElementById("addTodoForm");
+    var submitBtn = form.querySelector(".add-btn");
+    submitBtn.disabled = true;
+    try {
+      var res = await supabaseClient.from("todos").insert({ text: text }).select().single();
+      if (res.error) throw res.error;
+      todos.push({ id: res.data.id, text: res.data.text, completed: res.data.completed, completedOn: res.data.completed_on });
+      clearSyncError();
+      renderTodos();
+    } catch (e) {
+      showSyncError("Kon de taak niet opslaan: " + e.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  async function toggleTodo(id) {
+    var todo = todos.filter(function (t) { return t.id === id; })[0];
+    if (!todo) return;
+    var nextCompleted = !todo.completed;
+    var nextCompletedOn = nextCompleted ? todayISO() : null;
+    try {
+      var res = await supabaseClient.from("todos").update({ completed: nextCompleted, completed_on: nextCompletedOn }).eq("id", id);
+      if (res.error) throw res.error;
+      todo.completed = nextCompleted;
+      todo.completedOn = nextCompletedOn;
+      clearSyncError();
+      renderTodos();
+    } catch (e) {
+      showSyncError("Kon de taak niet bijwerken: " + e.message);
+    }
+  }
+
+  async function deleteTodo(id) {
+    try {
+      var res = await supabaseClient.from("todos").delete().eq("id", id);
+      if (res.error) throw res.error;
+      todos = todos.filter(function (t) { return t.id !== id; });
+      clearSyncError();
+      renderTodos();
+    } catch (e) {
+      showSyncError("Kon de taak niet verwijderen: " + e.message);
+    }
   }
 
   function isChecked(habitId, iso) {
@@ -1209,10 +1336,56 @@
     }
   }
 
+  function renderTodos() {
+    var list = document.getElementById("todoList");
+    var empty = document.getElementById("todoEmptyState");
+    list.innerHTML = "";
+    if (!todos.length) {
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+
+    var sorted = todos.slice().sort(function (a, b) {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      return 0;
+    });
+
+    sorted.forEach(function (t) {
+      var li = document.createElement("li");
+      li.className = "todo-row";
+
+      var checkBtn = document.createElement("button");
+      checkBtn.type = "button";
+      checkBtn.className = "check-btn";
+      checkBtn.setAttribute("aria-pressed", t.completed ? "true" : "false");
+      checkBtn.setAttribute("aria-label", (t.completed ? "Zet af als niet gedaan: " : "Vink af als gedaan: ") + t.text);
+      checkBtn.textContent = t.completed ? "✓" : "";
+      checkBtn.addEventListener("click", function () { toggleTodo(t.id); });
+
+      var text = document.createElement("span");
+      text.className = "todo-text" + (t.completed ? " completed" : "");
+      text.textContent = t.text;
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "delete-btn";
+      delBtn.textContent = "✕";
+      delBtn.title = "Verwijder taak";
+      delBtn.addEventListener("click", function () { deleteTodo(t.id); });
+
+      li.appendChild(checkBtn);
+      li.appendChild(text);
+      li.appendChild(delBtn);
+      list.appendChild(li);
+    });
+  }
+
   function renderAll() {
     renderHeroDate();
     renderHeroProgress();
     renderTodayList();
+    renderTodos();
     renderWeekTable();
     renderYearSection();
   }
@@ -1224,6 +1397,16 @@
     var name = input.value.trim();
     if (!name) return;
     addHabit(name, selectedColorKey());
+    input.value = "";
+    input.focus();
+  });
+
+  document.getElementById("addTodoForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("todoTextInput");
+    var text = input.value.trim();
+    if (!text) return;
+    addTodo(text);
     input.value = "";
     input.focus();
   });
@@ -1253,6 +1436,7 @@
     try {
       await withTimeout(ensureSession(), 15000, "geen reactie van Supabase binnen 15 seconden");
       await withTimeout(fetchHabitsAndChecks(), 15000, "geen reactie van Supabase binnen 15 seconden");
+      await withTimeout(fetchTodos(), 15000, "geen reactie van Supabase binnen 15 seconden");
       renderAll();
       document.getElementById("loadingOverlay").hidden = true;
       document.getElementById("app").hidden = false;
@@ -1270,7 +1454,7 @@
   // keep "today" fresh if the tab stays open across midnight
   setInterval(function () {
     if (document.getElementById("todayFull").dataset.iso !== todayISO()) {
-      renderAll();
+      purgeStaleTodos().catch(function () {}).then(renderAll);
     }
   }, 60000);
 })();
