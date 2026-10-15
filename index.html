@@ -180,6 +180,43 @@
     transition: width .3s ease;
   }
 
+  /* ---------- Tab bar ---------- */
+  .tabbar {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 4px;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 8px;
+    z-index: 5;
+  }
+  .tab-btn {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .tab-btn:hover { background: var(--surface); }
+  .tab-btn[aria-selected="true"] {
+    background: var(--accent);
+    color: #ffffff;
+  }
+  .tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
   /* ---------- Cards ---------- */
   .card {
     background: var(--surface-raised);
@@ -650,39 +687,53 @@
 
   <div class="sync-error" id="syncError" hidden></div>
 
-  <section class="card">
-    <h2>Nieuwe gewoonte</h2>
-    <form id="addHabitForm" autocomplete="off">
-      <input id="habitNameInput" type="text" placeholder="bv. 10.000 stappen zetten" maxlength="40" required />
-      <div class="color-picker" id="colorPicker"></div>
-      <button type="submit" class="add-btn">Toevoegen</button>
-    </form>
+  <nav class="tabbar" role="tablist" aria-label="Secties">
+    <button type="button" class="tab-btn" role="tab" id="tabBtnToday" aria-selected="true" aria-controls="tabPanelToday" data-tab="today">Vandaag</button>
+    <button type="button" class="tab-btn" role="tab" id="tabBtnWeek" aria-selected="false" aria-controls="tabPanelWeek" data-tab="week">Week</button>
+    <button type="button" class="tab-btn" role="tab" id="tabBtnStats" aria-selected="false" aria-controls="tabPanelStats" data-tab="stats">Statistieken</button>
+  </nav>
+
+  <section class="tab-panel" id="tabPanelToday" role="tabpanel" aria-labelledby="tabBtnToday">
+    <section class="card">
+      <h2>Nieuwe gewoonte</h2>
+      <form id="addHabitForm" autocomplete="off">
+        <input id="habitNameInput" type="text" placeholder="bv. 10.000 stappen zetten" maxlength="40" required />
+        <div class="color-picker" id="colorPicker"></div>
+        <button type="submit" class="add-btn">Toevoegen</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>Vandaag</h2></div>
+      <ul class="today-list" id="todayList"></ul>
+      <p class="empty-state" id="emptyState" hidden>Nog geen gewoontes toegevoegd. Voeg er hierboven één toe om te beginnen.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>To-do's vandaag</h2></div>
+      <form id="addTodoForm" autocomplete="off" class="todo-add-form">
+        <input id="todoTextInput" type="text" placeholder="bv. Boodschappen doen" maxlength="80" required />
+        <button type="submit" class="add-btn">Toevoegen</button>
+      </form>
+      <ul class="todo-list" id="todoList"></ul>
+      <p class="empty-state" id="todoEmptyState" hidden>Nog geen taken. Voeg er hierboven één toe.</p>
+    </section>
   </section>
 
-  <section class="card">
-    <div class="card-header"><h2>Vandaag</h2></div>
-    <ul class="today-list" id="todayList"></ul>
-    <p class="empty-state" id="emptyState" hidden>Nog geen gewoontes toegevoegd. Voeg er hierboven één toe om te beginnen.</p>
+  <section class="tab-panel" id="tabPanelWeek" role="tabpanel" aria-labelledby="tabBtnWeek" hidden>
+    <section class="card" id="weekCard" hidden>
+      <h2>Deze week</h2>
+      <div class="week-scroll">
+        <table id="weekTable"></table>
+      </div>
+    </section>
+    <p class="empty-app-state" id="weekEmptyState" hidden>Nog geen gewoontes toegevoegd. Voeg er een toe bij "Vandaag" om hier je week te zien.</p>
   </section>
 
-  <section class="card">
-    <div class="card-header"><h2>To-do's vandaag</h2></div>
-    <form id="addTodoForm" autocomplete="off" class="todo-add-form">
-      <input id="todoTextInput" type="text" placeholder="bv. Boodschappen doen" maxlength="80" required />
-      <button type="submit" class="add-btn">Toevoegen</button>
-    </form>
-    <ul class="todo-list" id="todoList"></ul>
-    <p class="empty-state" id="todoEmptyState" hidden>Nog geen taken. Voeg er hierboven één toe.</p>
+  <section class="tab-panel" id="tabPanelStats" role="tabpanel" aria-labelledby="tabBtnStats" hidden>
+    <section class="habits-year-section" id="yearSection"></section>
+    <p class="empty-app-state" id="statsEmptyState" hidden>Nog geen gewoontes toegevoegd. Voeg er een toe bij "Vandaag" om hier je jaaroverzicht te zien.</p>
   </section>
-
-  <section class="card" id="weekCard" hidden>
-    <h2>Deze week</h2>
-    <div class="week-scroll">
-      <table id="weekTable"></table>
-    </div>
-  </section>
-
-  <section class="habits-year-section" id="yearSection"></section>
 
 </div>
 
@@ -1055,10 +1106,12 @@
 
   function renderWeekTable() {
     var card = document.getElementById("weekCard");
+    var empty = document.getElementById("weekEmptyState");
     var table = document.getElementById("weekTable");
     table.innerHTML = "";
-    if (!habits.length) { card.hidden = true; return; }
+    if (!habits.length) { card.hidden = true; empty.hidden = false; return; }
     card.hidden = false;
+    empty.hidden = true;
 
     var monday = mondayOf(startOfDay(new Date()));
     var days = [];
@@ -1137,8 +1190,10 @@
 
   function renderYearSection() {
     var section = document.getElementById("yearSection");
+    var empty = document.getElementById("statsEmptyState");
     section.innerHTML = "";
-    if (!habits.length) return;
+    if (!habits.length) { empty.hidden = false; return; }
+    empty.hidden = true;
 
     var todayIso = todayISO();
     var thisYear = new Date().getFullYear();
@@ -1430,6 +1485,23 @@
   });
 
   renderColorPicker();
+
+  // ---------- tabs ----------
+  var TABS = [
+    { key: "today", btnId: "tabBtnToday", panelId: "tabPanelToday" },
+    { key: "week", btnId: "tabBtnWeek", panelId: "tabPanelWeek" },
+    { key: "stats", btnId: "tabBtnStats", panelId: "tabPanelStats" }
+  ];
+  function setActiveTab(key) {
+    TABS.forEach(function (t) {
+      var active = t.key === key;
+      document.getElementById(t.btnId).setAttribute("aria-selected", active ? "true" : "false");
+      document.getElementById(t.panelId).hidden = !active;
+    });
+  }
+  TABS.forEach(function (t) {
+    document.getElementById(t.btnId).addEventListener("click", function () { setActiveTab(t.key); });
+  });
 
   // ---------- bootstrap ----------
   async function boot() {
