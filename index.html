@@ -612,6 +612,47 @@
   }
   .legend-swatch.on { background: var(--heat-color, var(--accent)); }
 
+  /* ---------- Overview line chart ---------- */
+  .period-toggle { display: flex; gap: 4px; }
+  .period-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .period-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  .chart-subtitle { margin: -6px 0 10px; font-size: 0.78rem; color: var(--text-muted); }
+  .line-chart-wrap { position: relative; }
+  .line-chart-wrap svg { display: block; width: 100%; height: auto; }
+  .chart-gridline { stroke: var(--border); stroke-width: 1; }
+  .chart-axis-label { fill: var(--text-muted); font-size: 9px; font-family: inherit; }
+  .chart-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart-area { fill: var(--accent); opacity: 0.1; }
+  .chart-crosshair { stroke: var(--text-muted); stroke-width: 1; opacity: 0; pointer-events: none; }
+  .chart-dot { fill: var(--accent); stroke: var(--surface-raised); stroke-width: 2; opacity: 0; pointer-events: none; }
+  .chart-hit-area { fill: transparent; cursor: crosshair; touch-action: none; }
+  .chart-hit-area:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chart-tooltip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translate(-50%, calc(-100% - 10px));
+    background: var(--text);
+    color: var(--page);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+  }
+  .chart-tooltip-value { font-weight: 700; }
+
   .empty-app-state {
     text-align: center;
     color: var(--text-muted);
@@ -731,6 +772,24 @@
   </section>
 
   <section class="tab-panel" id="tabPanelStats" role="tabpanel" aria-labelledby="tabBtnStats" hidden>
+    <section class="card" id="overviewCard" hidden>
+      <div class="card-header">
+        <h2>Totaal per dag</h2>
+        <div class="period-toggle" id="periodToggle">
+          <button type="button" class="period-btn" data-days="7">7d</button>
+          <button type="button" class="period-btn" data-days="30" aria-pressed="true">30d</button>
+          <button type="button" class="period-btn" data-days="90">90d</button>
+        </div>
+      </div>
+      <p class="chart-subtitle">Aantal gewoontes afgevinkt, per dag</p>
+      <div class="line-chart-wrap" id="overviewChartWrap">
+        <div id="overviewSvgHost"></div>
+        <div class="chart-tooltip" id="overviewTooltip" hidden>
+          <div class="chart-tooltip-date"></div>
+          <div class="chart-tooltip-value"></div>
+        </div>
+      </div>
+    </section>
     <section class="habits-year-section" id="yearSection"></section>
     <p class="empty-app-state" id="statsEmptyState" hidden>Nog geen gewoontes toegevoegd. Voeg er een toe bij "Vandaag" om hier je jaaroverzicht te zien.</p>
   </section>
@@ -788,6 +847,7 @@
   var MONTHS_LONG = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
   var MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
   var DAYLABELS_MON_FIRST = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+  var SVGNS = "http://www.w3.org/2000/svg";
 
   // ---------- date helpers (local time, no UTC drift) ----------
   function toISO(d) {
@@ -808,6 +868,7 @@
   var checks = {}; // { habitId: { "YYYY-MM-DD": true } }
   var todos = []; // [{ id, text, completed, completedOn }]
   var yearOffsets = {}; // habitId -> offset from current year (for prev/next nav)
+  var overviewPeriodDays = 30;
   var pendingToggles = {}; // "habitId|iso" -> true while a request is in flight
 
   function showSyncError(message) {
@@ -1188,6 +1249,183 @@
     return columns;
   }
 
+  // ---------- overview line chart (all habits, totals per day) ----------
+  function computeDailyCounts(n) {
+    var today = startOfDay(new Date());
+    var start = addDays(today, -(n - 1));
+    var result = [];
+    for (var d = new Date(start); d <= today; d = addDays(d, 1)) {
+      var iso = toISO(d);
+      var count = habits.reduce(function (acc, h) { return acc + (isChecked(h.id, iso) ? 1 : 0); }, 0);
+      result.push({ date: new Date(d), iso: iso, count: count });
+    }
+    return result;
+  }
+
+  function niceAxisMax(v) {
+    if (v <= 0) return 1;
+    var mag = Math.pow(10, Math.floor(Math.log10(v)));
+    var norm = v / mag;
+    var niceNorm = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    return niceNorm * mag;
+  }
+
+  function intRange(a, b) {
+    var r = [];
+    for (var i = a; i <= b; i++) r.push(i);
+    return r;
+  }
+
+  function renderOverviewChart() {
+    var card = document.getElementById("overviewCard");
+    if (!habits.length) { card.hidden = true; return; }
+    card.hidden = false;
+
+    var data = computeDailyCounts(overviewPeriodDays);
+    var host = document.getElementById("overviewSvgHost");
+    var wrap = document.getElementById("overviewChartWrap");
+    var tooltip = document.getElementById("overviewTooltip");
+    host.innerHTML = "";
+    tooltip.hidden = true;
+
+    var W = 600, H = 200;
+    var x0 = 30, x1 = W - 10, y0 = 14, y1 = H - 24;
+
+    var maxCount = data.reduce(function (m, d) { return Math.max(m, d.count); }, 0);
+    var axisMax = niceAxisMax(maxCount);
+
+    function xAt(i) { return data.length > 1 ? x0 + (x1 - x0) * (i / (data.length - 1)) : (x0 + x1) / 2; }
+    function yAt(v) { return y1 - (v / axisMax) * (y1 - y0); }
+
+    var svg = document.createElementNS(SVGNS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Totaal afgevinkte gewoontes per dag, laatste " + overviewPeriodDays + " dagen");
+
+    var tickValues = axisMax <= 4 ? intRange(0, axisMax) : [0, Math.round(axisMax / 2), axisMax];
+    tickValues = tickValues.filter(function (v, idx) { return tickValues.indexOf(v) === idx; });
+    tickValues.forEach(function (v) {
+      var y = yAt(v);
+      var gridline = document.createElementNS(SVGNS, "line");
+      gridline.setAttribute("class", "chart-gridline");
+      gridline.setAttribute("x1", x0); gridline.setAttribute("x2", x1);
+      gridline.setAttribute("y1", y); gridline.setAttribute("y2", y);
+      svg.appendChild(gridline);
+
+      var label = document.createElementNS(SVGNS, "text");
+      label.setAttribute("class", "chart-axis-label");
+      label.setAttribute("x", x0 - 6);
+      label.setAttribute("y", y + 3);
+      label.setAttribute("text-anchor", "end");
+      label.textContent = String(v);
+      svg.appendChild(label);
+    });
+
+    var labelStride = Math.max(1, Math.ceil(data.length / 6));
+    data.forEach(function (d, i) {
+      if (i % labelStride !== 0 && i !== data.length - 1) return;
+      var text = document.createElementNS(SVGNS, "text");
+      text.setAttribute("class", "chart-axis-label");
+      text.setAttribute("x", xAt(i));
+      text.setAttribute("y", H - 6);
+      text.setAttribute("text-anchor", "middle");
+      text.textContent = d.date.getDate() + " " + MONTHS_SHORT[d.date.getMonth()];
+      svg.appendChild(text);
+    });
+
+    var points = data.map(function (d, i) { return xAt(i) + "," + yAt(d.count); });
+    var linePath = "M" + points.join(" L");
+    var areaPath = linePath + " L" + xAt(data.length - 1) + "," + y1 + " L" + xAt(0) + "," + y1 + " Z";
+
+    var area = document.createElementNS(SVGNS, "path");
+    area.setAttribute("class", "chart-area");
+    area.setAttribute("d", areaPath);
+    svg.appendChild(area);
+
+    var line = document.createElementNS(SVGNS, "path");
+    line.setAttribute("class", "chart-line");
+    line.setAttribute("d", linePath);
+    svg.appendChild(line);
+
+    var crosshair = document.createElementNS(SVGNS, "line");
+    crosshair.setAttribute("class", "chart-crosshair");
+    crosshair.setAttribute("y1", y0); crosshair.setAttribute("y2", y1);
+    svg.appendChild(crosshair);
+
+    var dot = document.createElementNS(SVGNS, "circle");
+    dot.setAttribute("class", "chart-dot");
+    dot.setAttribute("r", 4);
+    svg.appendChild(dot);
+
+    var hitRect = document.createElementNS(SVGNS, "rect");
+    hitRect.setAttribute("class", "chart-hit-area");
+    hitRect.setAttribute("x", x0); hitRect.setAttribute("y", 0);
+    hitRect.setAttribute("width", Math.max(1, x1 - x0)); hitRect.setAttribute("height", H);
+    hitRect.setAttribute("tabindex", "0");
+    hitRect.setAttribute("role", "slider");
+    hitRect.setAttribute("aria-label", "Datum kiezen om het aantal afgevinkte gewoontes te zien");
+    svg.appendChild(hitRect);
+
+    host.appendChild(svg);
+
+    var tooltipDate = tooltip.querySelector(".chart-tooltip-date");
+    var tooltipValue = tooltip.querySelector(".chart-tooltip-value");
+    var focusedIndex = data.length - 1;
+
+    function showAt(i) {
+      i = Math.max(0, Math.min(data.length - 1, i));
+      focusedIndex = i;
+      var d = data[i];
+      var px = xAt(i), py = yAt(d.count);
+      crosshair.setAttribute("x1", px); crosshair.setAttribute("x2", px);
+      crosshair.style.opacity = "1";
+      dot.setAttribute("cx", px); dot.setAttribute("cy", py);
+      dot.style.opacity = "1";
+
+      var svgRect = svg.getBoundingClientRect();
+      var wrapRect = wrap.getBoundingClientRect();
+      var scale = svgRect.width / W;
+      tooltip.style.left = (svgRect.left - wrapRect.left + px * scale) + "px";
+      tooltip.style.top = (svgRect.top - wrapRect.top + py * scale) + "px";
+      tooltipDate.textContent = d.date.getDate() + " " + MONTHS_LONG[d.date.getMonth()] + " " + d.date.getFullYear();
+      tooltipValue.textContent = d.count + (d.count === 1 ? " gewoonte afgevinkt" : " gewoontes afgevinkt");
+      tooltip.hidden = false;
+    }
+    function hide() {
+      crosshair.style.opacity = "0";
+      dot.style.opacity = "0";
+      tooltip.hidden = true;
+    }
+    function indexFromClientX(clientX) {
+      var rect = svg.getBoundingClientRect();
+      var relX = (clientX - rect.left) / rect.width * W;
+      var ratio = (relX - x0) / (x1 - x0);
+      return Math.round(ratio * (data.length - 1));
+    }
+
+    var dragging = false;
+    hitRect.addEventListener("pointerdown", function (e) {
+      dragging = true;
+      hitRect.setPointerCapture(e.pointerId);
+      showAt(indexFromClientX(e.clientX));
+    });
+    hitRect.addEventListener("pointermove", function (e) {
+      if (e.pointerType === "mouse" || dragging) showAt(indexFromClientX(e.clientX));
+    });
+    hitRect.addEventListener("pointerup", function () { dragging = false; });
+    hitRect.addEventListener("pointercancel", function () { dragging = false; });
+    hitRect.addEventListener("pointerleave", function (e) {
+      if (e.pointerType === "mouse") hide();
+    });
+    hitRect.addEventListener("focus", function () { showAt(focusedIndex); });
+    hitRect.addEventListener("blur", hide);
+    hitRect.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowLeft") { showAt(focusedIndex - 1); e.preventDefault(); }
+      else if (e.key === "ArrowRight") { showAt(focusedIndex + 1); e.preventDefault(); }
+      else if (e.key === "Escape") { hide(); }
+    });
+  }
+
   function renderYearSection() {
     var section = document.getElementById("yearSection");
     var empty = document.getElementById("statsEmptyState");
@@ -1442,6 +1680,7 @@
     renderTodayList();
     renderTodos();
     renderWeekTable();
+    renderOverviewChart();
     renderYearSection();
   }
 
@@ -1501,6 +1740,16 @@
   }
   TABS.forEach(function (t) {
     document.getElementById(t.btnId).addEventListener("click", function () { setActiveTab(t.key); });
+  });
+
+  document.getElementById("periodToggle").addEventListener("click", function (e) {
+    var btn = e.target.closest(".period-btn");
+    if (!btn) return;
+    overviewPeriodDays = parseInt(btn.dataset.days, 10);
+    document.querySelectorAll("#periodToggle .period-btn").forEach(function (b) {
+      b.setAttribute("aria-pressed", b === btn ? "true" : "false");
+    });
+    renderOverviewChart();
   });
 
   // ---------- bootstrap ----------
